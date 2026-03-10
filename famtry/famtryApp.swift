@@ -24,14 +24,45 @@ struct RootFlowView: View {
     @EnvironmentObject var data: PantryData
 
     var body: some View {
+        TabView {
+            PantryRootScreen()
+                .tabItem {
+                    Image(systemName: "house")
+                    Text("Pantry")
+                }
+
+            ProfileRootScreen()
+                .tabItem {
+                    Image(systemName: "person.crop.circle")
+                    Text("Profile")
+                }
+        }
+    }
+}
+
+struct PantryRootScreen: View {
+    @EnvironmentObject var data: PantryData
+
+    var body: some View {
         Group {
             if !data.hasUser {
-                LoginCreateUserScreen()
+                WelcomeScreen()
             } else if !data.hasFamily {
-                CreateOrJoinFamilyScreen()
+                NavigationView {
+                    CreateOrJoinFamilyScreen()
+                        .navigationTitle("Family")
+                }
             } else {
                 PantryOverviewScreen()
             }
+        }
+    }
+}
+
+struct ProfileRootScreen: View {
+    var body: some View {
+        NavigationView {
+            ProfileScreen()
         }
     }
 }

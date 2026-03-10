@@ -11,15 +11,16 @@ import Combine
 // MARK: - Models
 
 struct User {
-    var id: UUID = UUID()
+    var id: String
     var name: String
-    var familyId: UUID?
+    var email: String
+    var familyId: String?
 }
 
 struct Family {
-    var id: UUID = UUID()
+    var id: String
     var name: String
-    var members: [UUID]
+    var memberIds: [String]
 }
 
 struct PantryItem: Identifiable {
@@ -55,25 +56,58 @@ class PantryData: ObservableObject {
 
     // MARK: - User & Family helpers
 
-    func createUser(named name: String) {
-        let user = User(name: name, familyId: nil)
-        currentUser = user
+    @MainActor
+    func register(name: String, email: String, password: String) async throws {
+        let apiUser = try await APIClient.shared.register(name: name, email: email, password: password)
+        let familyId = apiUser.familyIdResolved
+        currentUser = User(
+            id: apiUser.id,
+            name: apiUser.name,
+            email: apiUser.email,
+            familyId: familyId
+        )
+        if let familyId {
+            let family = try await APIClient.shared.getFamily(id: familyId)
+            currentFamily = Family(id: family.id, name: family.name, memberIds: family.memberIds)
+        }
     }
 
-    func createFamily(named name: String) {
-        guard let user = currentUser else { return }
-        let family = Family(name: name, members: [user.id])
-        currentFamily = family
-        currentUser = User(id: user.id, name: user.name, familyId: family.id)
+    @MainActor
+    func login(email: String, password: String) async throws {
+        let response = try await APIClient.shared.login(email: email, password: password)
+        let familyId = response.user.familyIdResolved
+        currentUser = User(
+            id: response.user.id,
+            name: response.user.name,
+            email: response.user.email,
+            familyId: familyId
+        )
+        if let familyId {
+            let family = try await APIClient.shared.getFamily(id: familyId)
+            currentFamily = Family(id: family.id, name: family.name, memberIds: family.memberIds)
+        }
     }
 
-    func joinFamily(named name: String) {
-        // For now we just create a local "joined" family with this name.
-        // Later, this should call the backend and fetch the real family by code / id.
-        guard let user = currentUser else { return }
-        let family = Family(name: name, members: [user.id])
-        currentFamily = family
-        currentUser = User(id: user.id, name: user.name, familyId: family.id)
+    @MainActor
+    func createFamily(named name: String) async throws {
+        guard let userId = currentUser?.id else { return }
+        let family = try await APIClient.shared.createFamily(name: name, userId: userId)
+        currentFamily = Family(id: family.id, name: family.name, memberIds: family.memberIds)
+        if var user = currentUser {
+            user.familyId = family.id
+            currentUser = user
+        }
+    }
+
+    @MainActor
+    func joinFamily(familyId: String) async throws {
+        guard let userId = currentUser?.id else { return }
+        let family = try await APIClient.shared.joinFamily(familyId: familyId, userId: userId)
+        currentFamily = Family(id: family.id, name: family.name, memberIds: family.memberIds)
+        if var user = currentUser {
+            user.familyId = family.id
+            currentUser = user
+        }
     }
 
     // MARK: - Pantry item helpers

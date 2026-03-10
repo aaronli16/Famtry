@@ -5,7 +5,9 @@ struct CreateOrJoinFamilyScreen: View {
 
     @State private var mode: Mode = .create
     @State private var familyNameToCreate: String = ""
-    @State private var familyNameToJoin: String = ""
+    @State private var familyIdToJoin: String = ""
+    @State private var isSubmitting: Bool = false
+    @State private var errorMessage: String?
 
     enum Mode: String, CaseIterable, Identifiable {
         case create = "Create Family"
@@ -49,6 +51,14 @@ struct CreateOrJoinFamilyScreen: View {
                     }
                 }
 
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 24)
+                        .multilineTextAlignment(.center)
+                }
+
                 Spacer()
             }
         }
@@ -72,10 +82,9 @@ struct CreateOrJoinFamilyScreen: View {
                 .foregroundColor(.black)
 
             Button(action: {
-                let trimmed = familyNameToCreate.trimmingCharacters(in: .whitespacesAndNewlines)
-                data.createFamily(named: trimmed)
+                submitCreateFamily()
             }) {
-                Text("Create family and open pantry")
+                Text(isSubmitting ? "Please wait..." : "Create family and open pantry")
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
@@ -84,7 +93,7 @@ struct CreateOrJoinFamilyScreen: View {
                     .background(familyNameToCreate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.black)
                     .cornerRadius(10)
             }
-            .disabled(familyNameToCreate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(isSubmitting || familyNameToCreate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(.horizontal, 24)
     }
@@ -95,7 +104,7 @@ struct CreateOrJoinFamilyScreen: View {
                 .font(.subheadline)
                 .foregroundColor(.black)
 
-            TextField("Family name or invite code (placeholder for now)", text: $familyNameToJoin)
+            TextField("Family ID", text: $familyIdToJoin)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(
@@ -107,26 +116,55 @@ struct CreateOrJoinFamilyScreen: View {
                 .foregroundColor(.black)
 
             Button(action: {
-                let trimmed = familyNameToJoin.trimmingCharacters(in: .whitespacesAndNewlines)
-                data.joinFamily(named: trimmed)
+                submitJoinFamily()
             }) {
-                Text("Join family and open pantry")
+                Text(isSubmitting ? "Please wait..." : "Join family and open pantry")
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(familyNameToJoin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.black)
+                    .background(familyIdToJoin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.black)
                     .cornerRadius(10)
             }
-            .disabled(familyNameToJoin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(isSubmitting || familyIdToJoin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-            Text("Later this can use a real invite code: call backend, validate, and load the actual family. For now it only creates a local placeholder family object.")
+            Text("Create Family uses POST /families. Join Family uses POST /families/:id/join (Family ID is the backend _id).")
                 .font(.caption2)
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.leading)
         }
         .padding(.horizontal, 24)
+    }
+
+    private func submitCreateFamily() {
+        errorMessage = nil
+        isSubmitting = true
+
+        let trimmed = familyNameToCreate.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task {
+            do {
+                try await data.createFamily(named: trimmed)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSubmitting = false
+        }
+    }
+
+    private func submitJoinFamily() {
+        errorMessage = nil
+        isSubmitting = true
+
+        let trimmed = familyIdToJoin.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task {
+            do {
+                try await data.joinFamily(familyId: trimmed)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSubmitting = false
+        }
     }
 }
 
