@@ -14,8 +14,24 @@ struct famtryApp: App {
 
     var body: some Scene {
         WindowGroup {
-            PantryOverviewScreen()
+            RootFlowView()
                 .environmentObject(pantryData) // This shares it with all screens
+        }
+    }
+}
+
+struct RootFlowView: View {
+    @EnvironmentObject var data: PantryData
+
+    var body: some View {
+        Group {
+            if !data.hasUser {
+                LoginCreateUserScreen()
+            } else if !data.hasFamily {
+                CreateOrJoinFamilyScreen()
+            } else {
+                PantryOverviewScreen()
+            }
         }
     }
 }
