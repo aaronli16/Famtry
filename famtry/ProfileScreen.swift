@@ -1,10 +1,3 @@
-//
-//  PantryOverviewScreen.swift
-//  famtry
-//
-//  Created by Frecesca Wang.
-//
-
 import SwiftUI
 
 struct ProfileScreen: View {
