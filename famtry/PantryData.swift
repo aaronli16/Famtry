@@ -110,6 +110,15 @@ class PantryData: ObservableObject {
         }
     }
 
+    // MARK: - Logout
+
+    @MainActor
+    func logout() {
+        currentUser = nil
+        currentFamily = nil
+        items = []
+    }
+
     // MARK: - Pantry item helpers
 
     func addItem(name: String, qty: Int, expiry: Date?, includeExpiry: Bool) {

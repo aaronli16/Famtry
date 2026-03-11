@@ -5,113 +5,110 @@ struct ProfileScreen: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color(.systemGroupedBackground).ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                header
+            if let user = data.currentUser {
+                loggedInView(user: user)
+            } else {
+                loggedOutView
+            }
+        }
+        .navigationTitle("Profile")
+    }
 
-                if let user = data.currentUser {
-                    loggedInSection(user: user)
-                } else {
-                    loggedOutSection
+    // MARK: - Logged In
+
+    private func loggedInView(user: User) -> some View {
+        VStack(spacing: 0) {
+            // Profile header
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(Color.black)
+                        .frame(width: 72, height: 72)
+
+                    Text(String(user.name.prefix(1)).uppercased())
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
                 }
 
-                Spacer()
+                Text(user.name)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+
+                Text(user.email)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
             .padding(.top, 16)
-            .navigationTitle("Profile")
+            .padding(.bottom, 24)
+
+            // Settings-style grouped list
+            List {
+                // Family section
+                Section("Family") {
+                    if let family = data.currentFamily {
+                        HStack {
+                            Label(family.name, systemImage: "house.fill")
+                            Spacer()
+                        }
+
+                        NavigationLink {
+                            FamilyMembersScreen()
+                        } label: {
+                            Label("Family Members", systemImage: "person.3.fill")
+                        }
+                    } else {
+                        NavigationLink {
+                            CreateOrJoinFamilyScreen()
+                                .navigationTitle("Family")
+                        } label: {
+                            Label("Create or Join Family", systemImage: "person.badge.plus")
+                        }
+                    }
+                }
+
+                // Logout section
+                Section {
+                    Button(role: .destructive) {
+                        data.logout()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Log Out")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
         }
     }
 
-    private var header: some View {
-        VStack(spacing: 8) {
+    // MARK: - Logged Out
+
+    private var loggedOutView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
             Image(systemName: "person.circle")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 72, height: 72)
-                .foregroundColor(.black)
+                .foregroundColor(.secondary)
 
-            Text("Account")
-                .font(.headline)
-                .foregroundColor(.black)
-        }
-    }
-
-    private var loggedOutSection: some View {
-        VStack(spacing: 16) {
             Text("You are not logged in.")
                 .font(.subheadline)
-                .foregroundColor(.black)
+                .foregroundColor(.secondary)
 
-            NavigationLink {
-                LoginCreateUserScreen(mode: .login)
-            } label: {
-                Text("Log In")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.black)
-                    .cornerRadius(10)
-            }
-
-            NavigationLink {
-                LoginCreateUserScreen(mode: .register)
-            } label: {
-                Text("Sign Up")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.black, lineWidth: 1)
-                    )
-            }
-        }
-        .padding(.horizontal, 24)
-    }
-
-    private func loggedInSection(user: User) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Name")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                Text(user.name)
-                    .font(.body)
-                    .foregroundColor(.black)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Email")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                Text(user.email)
-                    .font(.body)
-                    .foregroundColor(.black)
-            }
-
-            if let family = data.currentFamily {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Family")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Text(family.name)
-                        .font(.body)
-                        .foregroundColor(.black)
-                    Text("ID: \(family.id)")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            } else {
+            VStack(spacing: 12) {
                 NavigationLink {
-                    CreateOrJoinFamilyScreen()
-                        .navigationTitle("Family")
+                    LoginCreateUserScreen(mode: .login)
                 } label: {
-                    Text("Create or Join Family")
+                    Text("Log In")
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.white)
@@ -120,9 +117,26 @@ struct ProfileScreen: View {
                         .background(Color.black)
                         .cornerRadius(10)
                 }
+
+                NavigationLink {
+                    LoginCreateUserScreen(mode: .register)
+                } label: {
+                    Text("Sign Up")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.black, lineWidth: 1)
+                        )
+                }
             }
+            .padding(.horizontal, 24)
+
+            Spacer()
         }
-        .padding(.horizontal, 24)
     }
 }
 
@@ -132,4 +146,3 @@ struct ProfileScreen: View {
             .environmentObject(PantryData())
     }
 }
-

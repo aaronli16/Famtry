@@ -172,5 +172,23 @@ final class APIClient {
     func getFamily(id: String) async throws -> APIFamily {
         try await request("GET", path: "/families/\(id)", responseType: APIFamily.self)
     }
+
+    // MARK: - Family Members
+
+    struct FamilyMember: Decodable, Identifiable {
+        let id: String
+        let name: String
+        let email: String
+
+        enum CodingKeys: String, CodingKey {
+            case id = "_id"
+            case name
+            case email
+        }
+    }
+
+    func getFamilyMembers(familyId: String) async throws -> [FamilyMember] {
+        try await request("GET", path: "/families/\(familyId)/members", responseType: [FamilyMember].self)
+    }
 }
 
