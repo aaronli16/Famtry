@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ProfileScreen: View {
     @EnvironmentObject var data: PantryData
+    @State private var isEditingProfile = false
+    @State private var isLeavingFamily = false
+    @State private var leaveError: String?
 
     var body: some View {
         ZStack {
@@ -14,6 +17,31 @@ struct ProfileScreen: View {
             }
         }
         .navigationTitle("Profile")
+        .sheet(isPresented: $isEditingProfile) {
+            EditProfileScreen()
+        }
+        .alert("Leave Family", isPresented: $isLeavingFamily) {
+            Button("Cancel", role: .cancel) {}
+            Button("Leave", role: .destructive) {
+                Task {
+                    do {
+                        try await data.leaveFamily()
+                    } catch {
+                        leaveError = error.localizedDescription
+                    }
+                }
+            }
+        } message: {
+            Text("Are you sure you want to leave this family?")
+        }
+        .alert("Error", isPresented: .init(
+            get: { leaveError != nil },
+            set: { if !$0 { leaveError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(leaveError ?? "Unknown error")
+        }
     }
 
     // MARK: - Logged In
@@ -27,10 +55,25 @@ struct ProfileScreen: View {
                         .fill(Color.black)
                         .frame(width: 72, height: 72)
 
-                    Text(String(user.name.prefix(1)).uppercased())
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
+                    if let avatar = user.avatar, !avatar.isEmpty {
+                        AsyncImage(url: URL(string: avatar)) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            Text(String(user.name.prefix(1)).uppercased())
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 72, height: 72)
+                        .clipShape(Circle())
+                    } else {
+                        Text(String(user.name.prefix(1)).uppercased())
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                    }
                 }
 
                 Text(user.name)
@@ -41,24 +84,77 @@ struct ProfileScreen: View {
                 Text(user.email)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+
+                if let signature = user.signature, !signature.isEmpty {
+                    Text(signature)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .padding(.top, 4)
+                }
             }
             .padding(.top, 16)
             .padding(.bottom, 24)
 
             // Settings-style grouped list
             List {
+                // Profile info section
+                Section("Profile") {
+                    Button {
+                        isEditingProfile = true
+                    } label: {
+                        Label("Edit Profile", systemImage: "pencil")
+                    }
+
+                    if let gender = user.gender, !gender.isEmpty {
+                        HStack {
+                            Label("Gender", systemImage: "person.fill")
+                            Spacer()
+                            Text(gender.capitalized)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if let region = user.region, !region.isEmpty {
+                        HStack {
+                            Label("Region", systemImage: "location.fill")
+                            Spacer()
+                            Text(region)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if let phone = user.phone, !phone.isEmpty {
+                        HStack {
+                            Label("Phone", systemImage: "phone.fill")
+                            Spacer()
+                            Text(phone)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 // Family section
                 Section("Family") {
                     if let family = data.currentFamily {
                         HStack {
                             Label(family.name, systemImage: "house.fill")
                             Spacer()
+                            Text("\(family.memberIds.count + 1) members")
+                                .foregroundColor(.secondary)
+                                .font(.subheadline)
                         }
 
                         NavigationLink {
                             FamilyMembersScreen()
                         } label: {
                             Label("Family Members", systemImage: "person.3.fill")
+                        }
+
+                        Button(role: .destructive) {
+                            isLeavingFamily = true
+                        } label: {
+                            Label("Leave Family", systemImage: "rectangle.portrait.and.arrow.right")
                         }
                     } else {
                         NavigationLink {

@@ -15,11 +15,19 @@ struct User {
     var name: String
     var email: String
     var familyId: String?
+    // Profile fields
+    var avatar: String?
+    var gender: String?
+    var region: String?
+    var phone: String?
+    var signature: String?
 }
 
 struct Family {
     var id: String
     var name: String
+    var avatar: String?
+    var description: String?
     var memberIds: [String]
 }
 
@@ -64,7 +72,12 @@ class PantryData: ObservableObject {
             id: apiUser.id,
             name: apiUser.name,
             email: apiUser.email,
-            familyId: familyId
+            familyId: familyId,
+            avatar: apiUser.avatar,
+            gender: apiUser.gender,
+            region: apiUser.region,
+            phone: apiUser.phone,
+            signature: apiUser.signature
         )
         if let familyId {
             let family = try await APIClient.shared.getFamily(id: familyId)
@@ -80,7 +93,12 @@ class PantryData: ObservableObject {
             id: response.user.id,
             name: response.user.name,
             email: response.user.email,
-            familyId: familyId
+            familyId: familyId,
+            avatar: response.user.avatar,
+            gender: response.user.gender,
+            region: response.user.region,
+            phone: response.user.phone,
+            signature: response.user.signature
         )
         if let familyId {
             let family = try await APIClient.shared.getFamily(id: familyId)
@@ -108,6 +126,44 @@ class PantryData: ObservableObject {
             user.familyId = family.id
             currentUser = user
         }
+    }
+
+    @MainActor
+    func verifyFamily(familyId: String) async throws -> (exists: Bool, name: String?) {
+        let response = try await APIClient.shared.verifyFamily(familyId: familyId)
+        return (response.exists, response.name)
+    }
+
+    @MainActor
+    func leaveFamily() async throws {
+        guard let userId = currentUser?.id, let familyId = currentFamily?.id else { return }
+        _ = try await APIClient.shared.leaveFamily(familyId: familyId, userId: userId)
+        currentFamily = nil
+        if var user = currentUser {
+            user.familyId = nil
+            currentUser = user
+        }
+    }
+
+    @MainActor
+    func updateProfile(name: String? = nil, avatar: String? = nil, gender: String? = nil, region: String? = nil, phone: String? = nil, signature: String? = nil) async throws {
+        guard let userId = currentUser?.id else { return }
+        let apiUser = try await APIClient.shared.updateProfile(userId: userId, name: name, avatar: avatar, gender: gender, region: region, phone: phone, signature: signature)
+        if var user = currentUser {
+            user.name = apiUser.name
+            user.avatar = apiUser.avatar
+            user.gender = apiUser.gender
+            user.region = apiUser.region
+            user.phone = apiUser.phone
+            user.signature = apiUser.signature
+            currentUser = user
+        }
+    }
+
+    @MainActor
+    func searchFamilies(query: String) async throws -> [Family] {
+        let families = try await APIClient.shared.searchFamilies(query: query)
+        return families.map { Family(id: $0.id, name: $0.name, avatar: $0.avatar, description: $0.description, memberIds: $0.memberIds) }
     }
 
     // MARK: - Logout
