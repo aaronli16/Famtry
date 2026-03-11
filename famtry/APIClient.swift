@@ -3,9 +3,8 @@ import Foundation
 final class APIClient {
     static let shared = APIClient()
 
-    // Live base URL from backend README
-    // https://github.com/echou0321/Famtry-Backend-Server
-    var baseURL = URL(string: "https://famtry-backend-server.onrender.com/api")!
+    // Local development server
+    var baseURL = URL(string: "http://localhost:5001/api")!
 
     private let session: URLSession
 
