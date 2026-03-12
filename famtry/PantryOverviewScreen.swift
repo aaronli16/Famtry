@@ -144,6 +144,7 @@ struct PantryOverviewScreen: View {
 
 // MARK: - Row View
 struct PantryRow: View {
+    @EnvironmentObject var data: PantryData
     let item: PantryItem
     
     var body: some View {
@@ -178,7 +179,20 @@ struct PantryRow: View {
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
-                if item.hasPendingRequests {
+                if hasPendingRequestsToReview {
+                    // Owner has requests to review
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 10))
+                        Text("REVIEW")
+                            .font(.system(size: 8))
+                            .fontWeight(.black)
+                    }
+                    .padding(4)
+                    .foregroundColor(.primary)
+                    .border(Color.primary, width: 1)
+                } else if hasPendingOwnershipRequest {
+                    // User has requested ownership
                     Text("PENDING")
                         .font(.system(size: 8))
                         .fontWeight(.black)
@@ -194,5 +208,18 @@ struct PantryRow: View {
     private var isExpired: Bool {
         guard let date = item.expirationDate else { return false }
         return date < Date()
+    }
+    
+    // Check if current user is an owner and there are pending requests
+    private var hasPendingRequestsToReview: Bool {
+        guard let userId = data.currentUser?.id else { return false }
+        let isOwner = item.owners.contains(where: { $0.id == userId })
+        return isOwner && item.hasPendingRequests
+    }
+    
+    // Check if current user has a pending ownership request
+    private var hasPendingOwnershipRequest: Bool {
+        guard let userId = data.currentUser?.id else { return false }
+        return item.pendingOwners.contains(where: { $0.id == userId })
     }
 }
