@@ -140,7 +140,7 @@ struct ProfileScreen: View {
                         HStack {
                             Label(family.name, systemImage: "house.fill")
                             Spacer()
-                            Text("\(family.memberIds.count + 1) members")
+                            Text("\(family.memberIds.count) members")
                                 .foregroundColor(.secondary)
                                 .font(.subheadline)
                         }

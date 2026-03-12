@@ -126,120 +126,48 @@ struct CreateOrJoinFamilyScreen: View {
                 .font(.subheadline)
                 .foregroundColor(.black)
 
-            // Search bar
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.gray)
-                
-                TextField("Search by name...", text: $searchText)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .onChange(of: searchText) { _, newValue in
-                        performSearch(query: newValue)
-                    }
-                
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                        searchResults = []
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.gray)
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.black, lineWidth: 1)
-            )
+            Text("Ask a family member for the family code and paste it below.")
+                .font(.caption)
+                .foregroundColor(.gray)
 
-            // Search results
-            if isSearching {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Searching...")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            } else if !searchResults.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Select a family to join:")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    
-                    ForEach(searchResults, id: \.id) { family in
-                        Button {
-                            selectFamily(family)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(family.name)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.black)
-                                    
-                                    Text("\(family.memberIds.count) members")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(.systemGray6))
-                            )
-                        }
-                    }
-                }
-            } else if searchText.isEmpty {
-                Text("Enter a family name to search")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            } else if searchText.count >= 2 {
-                Text("No families found matching \"\(searchText)\"")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+            TextField("Enter family code", text: $familyIdToJoin)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.black, lineWidth: 1)
+                )
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .foregroundColor(.black)
+
+            Button(action: {
+                submitJoinFamily()
+            }) {
+                Text(isSubmitting ? "Joining..." : "Join Family")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(familyIdToJoin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.black)
+                    .cornerRadius(10)
             }
+            .disabled(isSubmitting || familyIdToJoin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
             Spacer()
         }
         .padding(.horizontal, 24)
     }
 
-    private func performSearch(query: String) {
-        guard query.count >= 2 else {
-            searchResults = []
-            return
-        }
-        
-        isSearching = true
-        
-        Task {
-            do {
-                let results = try await data.searchFamilies(query: query)
-                searchResults = results
-            } catch {
-                // Silently fail - user can try again
-            }
-            isSearching = false
-        }
-    }
-
-    private func selectFamily(_ family: Family) {
+    private func submitJoinFamily() {
+        errorMessage = nil
         isSubmitting = true
-        
+
+        let trimmed = familyIdToJoin.trimmingCharacters(in: .whitespacesAndNewlines)
         Task {
             do {
-                try await data.joinFamily(familyId: family.id)
+                try await data.joinFamily(familyId: trimmed)
             } catch {
                 errorMessage = error.localizedDescription
             }

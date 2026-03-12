@@ -161,7 +161,12 @@ class PantryData: ObservableObject {
 
     @MainActor
     func leaveFamily() async throws {
-        guard let userId = currentUser?.id, let familyId = currentFamily?.id else { return }
+        guard let userId = currentUser?.id, let familyId = currentFamily?.id else {
+            print("DEBUG leaveFamily: missing userId or familyId")
+            return
+        }
+        print("DEBUG leaveFamily: familyId=\(familyId) userId=\(userId)")
+        print("DEBUG leaveFamily: URL would be /families/\(familyId)/leave")
         _ = try await APIClient.shared.leaveFamily(familyId: familyId, userId: userId)
         currentFamily = nil
         if var user = currentUser {

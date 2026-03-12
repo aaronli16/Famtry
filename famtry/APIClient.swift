@@ -113,17 +113,26 @@ final class APIClient {
         body: Body?,
         responseType: T.Type
     ) async throws -> T {
-        var request = URLRequest(url: makeURL(path))
+        let url = makeURL(path)
+        print("DEBUG API: \(method) \(url.absoluteString)")
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         if let body {
             request.httpBody = try JSONEncoder().encode(body)
+            if let bodyData = try? JSONEncoder().encode(body), let bodyStr = String(data: bodyData, encoding: .utf8) {
+                print("DEBUG API body: \(bodyStr)")
+            }
         }
 
         let (data, urlResponse) = try await session.data(for: request)
         guard let http = urlResponse as? HTTPURLResponse else {
             throw APIError(message: "Invalid server response.")
+        }
+        print("DEBUG API status: \(http.statusCode)")
+        if http.statusCode >= 400, let responseStr = String(data: data, encoding: .utf8) {
+            print("DEBUG API error response: \(responseStr)")
         }
 
         if (200..<300).contains(http.statusCode) {
