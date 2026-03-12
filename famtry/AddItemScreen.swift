@@ -100,6 +100,9 @@ struct AddItemScreen: View {
                         isSaving = false
                         dismiss()
                     }
+                    Task {
+                        await NotificationManager.shared.rescheduleExpirationNotification(for: createdItem)
+                    }
                 } catch {
                     await MainActor.run {
                         errorMessage = error.localizedDescription

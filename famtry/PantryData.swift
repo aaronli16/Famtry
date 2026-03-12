@@ -216,7 +216,8 @@ class PantryData: ObservableObject {
             return
         }
 
-        items = try await APIClient.shared.getItems(familyId: familyId)
+        let fetchedItems = try await APIClient.shared.getItems(familyId: familyId)
+        items = sortItemsByExpiration(fetchedItems)
     }
     
     @MainActor
@@ -229,6 +230,7 @@ class PantryData: ObservableObject {
             items.insert(freshItem, at: 0)
         }
 
+        items = sortItemsByExpiration(items)
         return freshItem
     }
     
@@ -239,6 +241,8 @@ class PantryData: ObservableObject {
         } else {
             items.insert(item, at: 0)
         }
+        
+        items = sortItemsByExpiration(items)
     }
 
     @MainActor
@@ -246,18 +250,19 @@ class PantryData: ObservableObject {
         items.removeAll { $0.id == id }
     }
 
-//    func addItem(name: String, qty: Int, expiry: Date?, includeExpiry: Bool) {
-//        let newItem = PantryItem(
-//            name: name,
-//            quantity: qty,
-//            expirationDate: includeExpiry ? expiry : nil,
-//            owners: ["Me"]
-//        )
-//        items.append(newItem)
-//    }
-//    
-//    // Bonus: Add this so you can test deleting items too!
-//    func deleteItem(at offsets: IndexSet) {
-//        items.remove(atOffsets: offsets)
-//    }
+    private func sortItemsByExpiration(_ items: [PantryItem]) -> [PantryItem] {
+        items.sorted { lhs, rhs in
+            switch (lhs.expirationDate, rhs.expirationDate) {
+            case let (lDate?, rDate?):
+                return lDate < rDate
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+        }
+    }
+    
 }

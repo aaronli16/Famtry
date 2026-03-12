@@ -333,8 +333,9 @@ final class APIClient {
         let expirationDate: Date?
         let ownerId: String
     }
-
+    
     struct UpdateItemBody: Encodable {
+        let name: String?
         let quantity: Int?
         let expirationDate: Date?
         let userId: String
@@ -346,6 +347,23 @@ final class APIClient {
 
     struct ApproverBody: Encodable {
         let approverId: String
+    }
+    
+    struct DeleteItemBody: Encodable {
+        let userId: String
+    }
+
+    struct DeleteItemResponse: Decodable {
+        let message: String
+    }
+
+    func deleteItem(id: String, userId: String) async throws {
+        _ = try await request(
+            "DELETE",
+            path: "/items/\(id)",
+            body: DeleteItemBody(userId: userId),
+            responseType: DeleteItemResponse.self
+        )
     }
 
     private static func parseFlexibleISODate(_ string: String) -> Date? {
@@ -467,9 +485,10 @@ final class APIClient {
         )
         return mapItem(item)
     }
-
+    
     func updateItem(
         id: String,
+        name: String?,
         quantity: Int?,
         expirationDate: Date?,
         userId: String
@@ -478,6 +497,7 @@ final class APIClient {
             "PUT",
             path: "/items/\(id)",
             body: UpdateItemBody(
+                name: name,
                 quantity: quantity,
                 expirationDate: expirationDate,
                 userId: userId

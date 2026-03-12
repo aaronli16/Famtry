@@ -16,6 +16,9 @@ struct famtryApp: App {
         WindowGroup {
             RootFlowView()
                 .environmentObject(pantryData) // This shares it with all screens
+                .task {
+                    try? await NotificationManager.shared.requestPermission() // ask permission
+                }
         }
     }
 }

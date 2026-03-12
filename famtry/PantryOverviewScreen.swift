@@ -12,6 +12,10 @@ struct PantryOverviewScreen: View {
     @EnvironmentObject var data: PantryData
     @State private var showAddItem = false
     @State private var showLoginAlert = false
+    @State private var showDeleteConfirm = false
+    @State private var selectedItemToDelete: PantryItem?
+    @State private var isDeleting = false
+    @State private var deleteErrorMessage: String?
     
     var body: some View {
         NavigationView {
@@ -57,12 +61,23 @@ struct PantryOverviewScreen: View {
                         }
                     }
                 }
-
+                
                 ForEach(data.items) { item in
                     NavigationLink {
                         ItemDetailScreen(itemId: item.id)
                     } label: {
                         PantryRow(item: item)
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        if canDelete(item) {
+                            Button(role: .destructive) {
+                                selectedItemToDelete = item
+                                showDeleteConfirm = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
                     }
                 }
             }
@@ -85,12 +100,54 @@ struct PantryOverviewScreen: View {
             } message: {
                 Text("Please log in from the Profile tab before creating or joining a family.")
             }
+            .alert("Delete item?", isPresented: $showDeleteConfirm, presenting: selectedItemToDelete) { item in
+                Button("Cancel", role: .cancel) { }
+
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await deleteItem(item)
+                    }
+                }
+            } message: { item in
+                Text("Are you sure you want to delete \(item.name)?")
+            }
+            .alert("Delete failed", isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(deleteErrorMessage ?? "")
+            }
         }
         .task {
             if data.hasUser && data.hasFamily {
                 try? await data.fetchItems()
             }
         }
+        
+    }
+    
+    private func canDelete(_ item: PantryItem) -> Bool {
+        guard let userId = data.currentUser?.id else { return false }
+        return item.owners.contains(where: { $0.id == userId })
+    }
+
+    @MainActor
+    private func deleteItem(_ item: PantryItem) async {
+        guard let userId = data.currentUser?.id else { return }
+
+        isDeleting = true
+        deleteErrorMessage = nil
+
+        do {
+            try await APIClient.shared.deleteItem(id: item.id, userId: userId)
+            data.removeItem(id: item.id)
+        } catch {
+            deleteErrorMessage = error.localizedDescription
+        }
+
+        isDeleting = false
     }
 }
 
