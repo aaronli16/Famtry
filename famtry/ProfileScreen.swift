@@ -5,7 +5,8 @@ struct ProfileScreen: View {
     @State private var isEditingProfile = false
     @State private var isLeavingFamily = false
     @State private var leaveError: String?
-
+    @State private var refreshTask: Task<Void, Never>?
+    
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
@@ -41,6 +42,21 @@ struct ProfileScreen: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(leaveError ?? "Unknown error")
+        }
+        .task {
+            await data.refreshFamilyAndItems()
+        }
+        .onAppear {
+            refreshTask = Task {
+                while !Task.isCancelled {
+                    await data.refreshFamilyAndItems()
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+            }
+        }
+        .onDisappear {
+            refreshTask?.cancel()
+            refreshTask = nil
         }
     }
 

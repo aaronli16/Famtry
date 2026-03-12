@@ -197,6 +197,32 @@ class PantryData: ObservableObject {
         let families = try await APIClient.shared.searchFamilies(query: query)
         return families.map { Family(id: $0.id, name: $0.name, avatar: $0.avatar, description: $0.description, memberIds: $0.memberIds) }
     }
+    
+    @MainActor
+    func refreshCurrentFamily() async throws {
+        guard let familyId = currentUser?.familyId ?? currentFamily?.id else { return }
+
+        let family = try await APIClient.shared.getFamily(id: familyId)
+        currentFamily = Family(
+            id: family.id,
+            name: family.name,
+            avatar: family.avatar,
+            description: family.description,
+            memberIds: family.memberIds
+        )
+    }
+
+    @MainActor
+    func refreshFamilyAndItems() async {
+        do {
+            try await refreshCurrentFamily()
+            if currentFamily != nil {
+                try await fetchItems()
+            }
+        } catch {
+            print("Failed to refresh family: \(error.localizedDescription)")
+        }
+    }
 
     // MARK: - Logout
 
