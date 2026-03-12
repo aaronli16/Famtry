@@ -41,6 +41,13 @@ struct AddItemScreen: View {
                             .font(.footnote)
                     }
                 }
+//                Section {
+//                    Button("Test Notification in 1 Minute") {
+//                        Task {
+//                            await NotificationManager.shared.scheduleTestNotification()
+//                        }
+//                    }
+//                }
                 
                 Section {
                     Button(action: {
@@ -94,14 +101,13 @@ struct AddItemScreen: View {
                         expirationDate: includeExpiration ? expirationDate : nil,
                         ownerId: ownerId
                     )
-                        
+
+                    await NotificationManager.shared.rescheduleExpirationNotification(for: createdItem)
+
                     await MainActor.run {
                         data.replaceItem(createdItem)
                         isSaving = false
                         dismiss()
-                    }
-                    Task {
-                        await NotificationManager.shared.rescheduleExpirationNotification(for: createdItem)
                     }
                 } catch {
                     await MainActor.run {

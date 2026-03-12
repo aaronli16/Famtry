@@ -6,20 +6,40 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 @main
 struct famtryApp: App {
-    // We create one instance of the data here
-    @StateObject var pantryData = PantryData()
+    @StateObject private var pantryData = PantryData()
+
+    init() {
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+    }
 
     var body: some Scene {
         WindowGroup {
             RootFlowView()
-                .environmentObject(pantryData) // This shares it with all screens
+                .environmentObject(pantryData)
                 .task {
-                    try? await NotificationManager.shared.requestPermission() // ask permission
+                    do {
+                        try await NotificationManager.shared.requestPermission()
+                    } catch {
+                        print("Failed to request notification permission: \(error.localizedDescription)")
+                    }
                 }
         }
+    }
+}
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 }
 
