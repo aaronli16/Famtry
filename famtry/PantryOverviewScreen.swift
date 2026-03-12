@@ -1,10 +1,3 @@
-//
-//  PantryOverviewScreen.swift
-//  famtry
-//
-//  Created by Katie Hsu on 3/9/26.
-//
-
 import SwiftUI
 
 struct PantryOverviewScreen: View {
@@ -29,31 +22,33 @@ struct PantryOverviewScreen: View {
 
                         if !data.hasUser {
                             VStack(spacing: 8) {
+                                // CREATE FAMILY BUTTON
                                 Button(action: {
                                     showLoginAlert = true
                                 }) {
                                     Text("Create Family")
                                         .font(.footnote)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(Color(.systemBackground)) // Inverse text
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
-                                        .background(Color.black)
+                                        .background(Color.primary) // Adapts to White in Dark Mode
                                         .cornerRadius(8)
                                 }
 
+                                // JOIN FAMILY BUTTON
                                 Button(action: {
                                     showLoginAlert = true
                                 }) {
                                     Text("Join Family")
                                         .font(.footnote)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.black, lineWidth: 1)
+                                                .stroke(Color.primary, lineWidth: 1)
                                         )
                                 }
                             }
@@ -86,13 +81,14 @@ struct PantryOverviewScreen: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showAddItem = true }) {
-                        Image(systemName: "plus").foregroundColor(data.hasUser && data.hasFamily ? .black : .gray)
+                        Image(systemName: "plus")
+                            // Plus icon now turns white in dark mode
+                            .foregroundColor(data.hasUser && data.hasFamily ? .primary : .gray)
                     }
                     .disabled(!data.hasUser || !data.hasFamily)
                 }
             }
             .sheet(isPresented: $showAddItem) {
-                // The popup "Add" screen
                 AddItemScreen()
             }
             .alert("Login required", isPresented: $showLoginAlert) {
@@ -102,7 +98,6 @@ struct PantryOverviewScreen: View {
             }
             .alert("Delete item?", isPresented: $showDeleteConfirm, presenting: selectedItemToDelete) { item in
                 Button("Cancel", role: .cancel) { }
-
                 Button("Delete", role: .destructive) {
                     Task {
                         await deleteItem(item)
@@ -125,7 +120,6 @@ struct PantryOverviewScreen: View {
                 try? await data.fetchItems()
             }
         }
-        
     }
     
     private func canDelete(_ item: PantryItem) -> Bool {
@@ -136,21 +130,19 @@ struct PantryOverviewScreen: View {
     @MainActor
     private func deleteItem(_ item: PantryItem) async {
         guard let userId = data.currentUser?.id else { return }
-
         isDeleting = true
         deleteErrorMessage = nil
-
         do {
             try await APIClient.shared.deleteItem(id: item.id, userId: userId)
             data.removeItem(id: item.id)
         } catch {
             deleteErrorMessage = error.localizedDescription
         }
-
         isDeleting = false
     }
 }
 
+// MARK: - Row View
 struct PantryRow: View {
     let item: PantryItem
     
@@ -159,6 +151,7 @@ struct PantryRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
                     .font(.headline)
+                    .foregroundColor(.primary)
                     .strikethrough(isExpired)
                 
                 Text("Owners: \(item.ownerNames)")
@@ -170,9 +163,10 @@ struct PantryRow: View {
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(isExpired ? Color.black : Color.clear)
-                        .foregroundColor(isExpired ? .white : .black)
-                        .border(Color.black, width: 1)
+                        // Background becomes white in dark mode, text becomes black
+                        .background(isExpired ? Color.primary : Color.clear)
+                        .foregroundColor(isExpired ? Color(.systemBackground) : .primary)
+                        .border(Color.primary, width: 1)
                 }
             }
             
@@ -182,13 +176,15 @@ struct PantryRow: View {
                 Text("x\(item.quantity)")
                     .font(.title3)
                     .fontWeight(.bold)
+                    .foregroundColor(.primary)
                 
                 if item.hasPendingRequests {
                     Text("PENDING")
                         .font(.system(size: 8))
                         .fontWeight(.black)
                         .padding(4)
-                        .border(Color.black)
+                        .foregroundColor(.primary)
+                        .border(Color.primary, width: 1)
                 }
             }
         }
