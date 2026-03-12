@@ -59,7 +59,11 @@ struct PantryOverviewScreen: View {
                 }
 
                 ForEach(data.items) { item in
-                    PantryRow(item: item)
+                    NavigationLink {
+                        ItemDetailScreen(itemId: item.id)
+                    } label: {
+                        PantryRow(item: item)
+                    }
                 }
             }
             .listStyle(PlainListStyle())
@@ -82,6 +86,11 @@ struct PantryOverviewScreen: View {
                 Text("Please log in from the Profile tab before creating or joining a family.")
             }
         }
+        .task {
+            if data.hasUser && data.hasFamily {
+                try? await data.fetchItems()
+            }
+        }
     }
 }
 
@@ -95,7 +104,7 @@ struct PantryRow: View {
                     .font(.headline)
                     .strikethrough(isExpired)
                 
-                Text("Owners: \(item.owners.joined(separator: ", "))")
+                Text("Owners: \(item.ownerNames)")
                     .font(.caption)
                     .foregroundColor(.gray)
                 
@@ -117,7 +126,7 @@ struct PantryRow: View {
                     .font(.title3)
                     .fontWeight(.bold)
                 
-                if item.isPendingApproval {
+                if item.hasPendingRequests {
                     Text("PENDING")
                         .font(.system(size: 8))
                         .fontWeight(.black)

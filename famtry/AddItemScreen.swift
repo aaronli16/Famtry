@@ -16,6 +16,9 @@ struct AddItemScreen: View {
     @State private var includeExpiration: Bool = false
     @State private var expirationDate: Date = Date()
     
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    
     var body: some View {
         NavigationView {
             Form {
@@ -31,28 +34,79 @@ struct AddItemScreen: View {
                     }
                 }
                 
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.footnote)
+                    }
+                }
+                
                 Section {
                     Button(action: {
-                        // Call the function in our Data Manager
-                        data.addItem(name: itemName, qty: quantity, expiry: expirationDate, includeExpiry: includeExpiration)
-                        dismiss() // Close the popup
+                        saveItem()
                     }) {
-                        Text("Add to Pantry")
+                        Text(isSaving ? "Saving..." : "Add to Pantry")
                             .frame(maxWidth: .infinity)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
                     }
-                    .listRowBackground(itemName.isEmpty ? Color.gray : Color.black)
-                    .disabled(itemName.isEmpty) // Prevent adding empty items
+                    .listRowBackground(canSave ? Color.black : Color.gray)
+                    .disabled(!canSave || isSaving)
                 }
             }
             .navigationTitle("New Item")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
-    func saveItem() {
-        // Here you would trigger your POST request to the Node.js/Render backend
-        print("Saving \(itemName) to database...")
-        dismiss()
+    
+    private var canSave: Bool {
+        !itemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        data.currentUser != nil &&
+        data.currentFamily != nil
+    }
+    
+    private func saveItem() {
+//        // Here you would trigger your POST request to the Node.js/Render backend
+//        print("Saving \(itemName) to database...")
+//        dismiss()
+        guard let familyId = data.currentFamily?.id,
+              let ownerId = data.currentUser?.id else {
+            errorMessage = "You need to be logged in and in a family before adding an item."
+            return
+            }
+                
+            let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedName.isEmpty else {
+                errorMessage = "Please enter an item name."
+                return
+            }
+                
+            isSaving = true
+            errorMessage = nil
+            
+            Task {
+                do {
+                    let createdItem = try await APIClient.shared.createItem(
+                        familyId: familyId,
+                        name: trimmedName,
+                        quantity: quantity,
+                        expirationDate: includeExpiration ? expirationDate : nil,
+                        ownerId: ownerId
+                    )
+                        
+                    await MainActor.run {
+                        data.replaceItem(createdItem)
+                        isSaving = false
+                        dismiss()
+                    }
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        isSaving = false
+                    }
+                }
+            }
     }
 }
     

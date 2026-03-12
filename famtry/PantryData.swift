@@ -31,13 +31,26 @@ struct Family {
     var memberIds: [String]
 }
 
-struct PantryItem: Identifiable {
-    let id = UUID()
+struct ItemOwner: Identifiable, Hashable {
+    let id: String
+    let name: String
+}
+
+struct PantryItem: Identifiable, Hashable {
+    let id: String
     var name: String
     var quantity: Int
     var expirationDate: Date?
-    var owners: [String]
-    var isPendingApproval: Bool = false
+    var familyId: String?
+    // the part I changed
+    var owners: [ItemOwner]
+    var pendingOwners: [ItemOwner]
+    var ownerNames: String {
+        owners.map(\.name).joined(separator: ", ")
+    }
+    var hasPendingRequests: Bool {
+        !pendingOwners.isEmpty
+    }
 }
 
 // MARK: - Global App / Pantry State
@@ -47,6 +60,7 @@ class PantryData: ObservableObject {
     // Later you can replace this with real backend data.
     @Published var currentUser: User?
     @Published var currentFamily: Family?
+    @Published var items: [PantryItem] = []
 
     var hasUser: Bool {
         currentUser != nil
@@ -56,11 +70,11 @@ class PantryData: ObservableObject {
         currentFamily != nil
     }
 
-    // @Published tells SwiftUI: "Whenever this list changes, refresh the screens!"
-    @Published var items: [PantryItem] = [
-        PantryItem(name: "Almond Milk", quantity: 2, expirationDate: Date().addingTimeInterval(86400 * 3), owners: ["Alice"]),
-        PantryItem(name: "Greek Yogurt", quantity: 5, expirationDate: Date().addingTimeInterval(-86400), owners: ["Bob"])
-    ]
+//    // @Published tells SwiftUI: "Whenever this list changes, refresh the screens!"
+//    @Published var items: [PantryItem] = [
+//        PantryItem(name: "Almond Milk", quantity: 2, expirationDate: Date().addingTimeInterval(86400 * 3), owners: ["Alice"]),
+//        PantryItem(name: "Greek Yogurt", quantity: 5, expirationDate: Date().addingTimeInterval(-86400), owners: ["Bob"])
+//    ]
 
     // MARK: - User & Family helpers
 
@@ -82,7 +96,11 @@ class PantryData: ObservableObject {
         if let familyId {
             let family = try await APIClient.shared.getFamily(id: familyId)
             currentFamily = Family(id: family.id, name: family.name, memberIds: family.memberIds)
+            try await fetchItems()
+        } else {
+            items = []
         }
+        
     }
 
     @MainActor
@@ -103,6 +121,9 @@ class PantryData: ObservableObject {
         if let familyId {
             let family = try await APIClient.shared.getFamily(id: familyId)
             currentFamily = Family(id: family.id, name: family.name, memberIds: family.memberIds)
+            try await fetchItems()
+        } else {
+            items = []
         }
     }
 
@@ -115,6 +136,8 @@ class PantryData: ObservableObject {
             user.familyId = family.id
             currentUser = user
         }
+        
+        try await fetchItems()
     }
 
     @MainActor
@@ -126,6 +149,8 @@ class PantryData: ObservableObject {
             user.familyId = family.id
             currentUser = user
         }
+        
+        try await fetchItems()
     }
 
     @MainActor
@@ -143,6 +168,8 @@ class PantryData: ObservableObject {
             user.familyId = nil
             currentUser = user
         }
+        
+        items = []
     }
 
     @MainActor
@@ -177,18 +204,55 @@ class PantryData: ObservableObject {
 
     // MARK: - Pantry item helpers
 
-    func addItem(name: String, qty: Int, expiry: Date?, includeExpiry: Bool) {
-        let newItem = PantryItem(
-            name: name,
-            quantity: qty,
-            expirationDate: includeExpiry ? expiry : nil,
-            owners: ["Me"]
-        )
-        items.append(newItem)
+    @MainActor
+    func fetchItems() async throws {
+        guard let familyId = currentFamily?.id else {
+            items = []
+            return
+        }
+
+        items = try await APIClient.shared.getItems(familyId: familyId)
     }
     
-    // Bonus: Add this so you can test deleting items too!
-    func deleteItem(at offsets: IndexSet) {
-        items.remove(atOffsets: offsets)
+    @MainActor
+    func refreshItem(_ itemId: String) async throws -> PantryItem {
+        let freshItem = try await APIClient.shared.getItem(id: itemId)
+
+        if let index = items.firstIndex(where: { $0.id == itemId }) {
+            items[index] = freshItem
+        } else {
+            items.insert(freshItem, at: 0)
+        }
+
+        return freshItem
     }
+    
+    @MainActor
+    func replaceItem(_ item: PantryItem) {
+        if let index = items.firstIndex(where: { $0.id == item.id }) {
+            items[index] = item
+        } else {
+            items.insert(item, at: 0)
+        }
+    }
+
+    @MainActor
+    func removeItem(id: String) {
+        items.removeAll { $0.id == id }
+    }
+
+//    func addItem(name: String, qty: Int, expiry: Date?, includeExpiry: Bool) {
+//        let newItem = PantryItem(
+//            name: name,
+//            quantity: qty,
+//            expirationDate: includeExpiry ? expiry : nil,
+//            owners: ["Me"]
+//        )
+//        items.append(newItem)
+//    }
+//    
+//    // Bonus: Add this so you can test deleting items too!
+//    func deleteItem(at offsets: IndexSet) {
+//        items.remove(atOffsets: offsets)
+//    }
 }
